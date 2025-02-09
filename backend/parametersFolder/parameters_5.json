@@ -1,0 +1,22 @@
+{
+    "keywords": [
+        "$MAHOOM"
+    ],
+    "startDate": {
+        "month": 2,
+        "day": 9,
+        "year": 2025,
+        "hours": 2,
+        "mins": 30,
+        "secs": 0
+    },
+    "endDate": {
+        "month": 2,
+        "day": 9,
+        "year": 2025,
+        "hours": 2,
+        "mins": 40,
+        "secs": 0
+    },
+    "mode": "EXACT"
+}
