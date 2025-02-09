@@ -1,2 +1,3 @@
 venv
 backend/app/config.py
+backend/scraper_raw.py
