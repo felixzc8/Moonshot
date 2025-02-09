@@ -1,12 +1,40 @@
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, List
-from app.models.coins import Coin, CoinsListResponse
+from bson import ObjectId
+from app.models.coins import Coin, CoinsListResponse, CoinResponse
 from app.database import db
 
 router = APIRouter(
     prefix="/coins",
     tags=["coins"]
 )
+
+@router.get("/{coin_id}", response_model=CoinResponse)
+async def get_coin(coin_id: str):
+    """
+    Retrieve a specific coin by its ID.
+    
+    - **coin_id**: The MongoDB ObjectId of the coin
+    """
+    try:
+        # Validate and convert string ID to ObjectId
+        if not ObjectId.is_valid(coin_id):
+            raise HTTPException(status_code=400, detail="Invalid coin ID format")
+            
+        coin = await db.coins.find_one({"_id": ObjectId(coin_id)})
+        
+        if coin is None:
+            raise HTTPException(status_code=404, detail="Coin not found")
+
+        return {
+            "status": "success",
+            "data": coin
+        }
+
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error retrieving coin: {str(e)}")
 
 @router.get("/", response_model=CoinsListResponse)
 async def get_coins(
