@@ -1,6 +1,6 @@
-from scraper_raw import process_main
-from scraper_raw import extractTrending
-from datetime import datetime, timedelta
+# from backend.scraper_raw import process_main
+# from backend.scraper_raw import extractTrending
+from datetime import datetime, timedelta, timezone
 import re
 import os
 import json
@@ -8,7 +8,11 @@ import multiprocessing
 import shutil
 import time
 from pymongo import MongoClient
-
+from app.models.tweets import Tweet
+import pandas as pd
+from typing import List, Optional
+from scraper_raw import process_main
+from scraper_raw import extractTrending
 
 CURRENTCOOKIE = "accounts_cookies/accounts_cookies1.py"
 
@@ -86,8 +90,32 @@ def splitIntoParts(numberOfAccounts: int, minutesToScrape: int):
 
     return parameters_list
 
-def uploadCSV():
-    client = MongoClient("mongodb://localhost:27017/")
+def uploadCSV(file_path: str) -> List[Tweet]:
+    df = pd.read_csv(file_path)
+    tweets = []
+    
+    for _, row in df.iterrows():
+        try:
+            tweet = Tweet(
+                tweet_id=str(row["id_str"]),
+                username=row["username"],
+                tweet_body=row["rawContent"],
+                url=row["url"],
+                timestamp=datetime.fromtimestamp(row["epoch"], tz=timezone.utc),
+                language=row["lang"],
+                reply_count=row["replyCount"],
+                retweet_count=row["retweetCount"],
+                like_count=row["likeCount"],
+                quote_count=row["quoteCount"],
+                # view_count=row.get("viewCount", 0)
+                view_count=0
+            )
+            tweets.append(tweet)
+        except Exception as e:
+            print(f"Error processing row: {row} - {e}")
+            # continue
+    
+    return tweets
     
     
 
@@ -122,7 +150,7 @@ def scrapeMain(numberOfAccounts: int, minutesToScrape: int, parametersFolder: st
         print(f"Scraping stopped after {minutesToScrape} minutes.")
 
     print("Uploading scraped data to MongoDB...")
-    uploadCSV()
+    # use uploadCSV() to upload
     print("Upload complete.")
 
     
@@ -136,7 +164,9 @@ if __name__ == "__main__":
         "accounts_cookies/accounts_cookies6.py"
     ]
 
-    scrapeMain(6, 60, "parametersFolder", cookiesList)
+    # scrapeMain(6, 60, "parametersFolder", cookiesList)
+    
+    print(uploadCSV("parsed_tweets/output_1.csv"))
 
 # print(f"{getTrendingKeywords(CURRENTCOOKIE)}")
 
