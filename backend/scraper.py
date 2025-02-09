@@ -13,9 +13,11 @@ import pandas as pd
 from typing import List, Optional
 from scraper_raw import process_main
 from scraper_raw import extractTrending
+from app.config import MONGODB_URI, DB_NAME
 
 CURRENTCOOKIE = "accounts_cookies/accounts_cookies1.py"
-
+client = MongoClient(MONGODB_URI)
+db = client[DB_NAME]
 '''
 accounts = n
 time frame = past 6 hours
@@ -96,20 +98,33 @@ def uploadCSV(file_path: str) -> List[Tweet]:
     
     for _, row in df.iterrows():
         try:
-            tweet = Tweet(
-                tweet_id=str(row["id_str"]),
-                username=row["username"],
-                tweet_body=row["rawContent"],
-                url=row["url"],
-                timestamp=datetime.fromtimestamp(row["epoch"], tz=timezone.utc),
-                language=row["lang"],
-                reply_count=row["replyCount"],
-                retweet_count=row["retweetCount"],
-                like_count=row["likeCount"],
-                quote_count=row["quoteCount"],
-                # view_count=row.get("viewCount", 0)
-                view_count=0
-            )
+            # tweet = Tweet(
+            #     tweet_id=str(row["id_str"]),
+            #     username=row["username"],
+            #     tweet_body=row["rawContent"],
+            #     url=row["url"],
+            #     timestamp=datetime.fromtimestamp(row["epoch"], tz=timezone.utc),
+            #     language=row["lang"],
+            #     reply_count=row["replyCount"],
+            #     retweet_count=row["retweetCount"],
+            #     like_count=row["likeCount"],
+            #     quote_count=row["quoteCount"],
+            #     # view_count=row.get("viewCount", 0)
+            #     view_count=0
+            # )
+            tweet = {
+                "tweet_id": str(row["id_str"]),
+                "username": row["username"],
+                "tweet_body": row["rawContent"],
+                "url": row["url"],
+                "timestamp": datetime.fromtimestamp(row["epoch"], tz=timezone.utc),
+                "language": row["lang"],
+                "reply_count": row["replyCount"],
+                "retweet_count": row["retweetCount"],
+                "like_count": row["likeCount"],
+                "quote_count": row["quoteCount"],
+                "view_count": 0,
+            }
             tweets.append(tweet)
         except Exception as e:
             print(f"Error processing row: {row} - {e}")
@@ -121,6 +136,7 @@ def uploadCSV(file_path: str) -> List[Tweet]:
 
 def scrapeMain(numberOfAccounts: int, minutesToScrape: int, parametersFolder: str, cookiesList: list):
     parametersList = splitIntoParts(numberOfAccounts, minutesToScrape)
+    tweets_collection = db.tweets
 
     if os.path.exists(parametersFolder):
         shutil.rmtree(parametersFolder)
@@ -150,8 +166,18 @@ def scrapeMain(numberOfAccounts: int, minutesToScrape: int, parametersFolder: st
         print(f"Scraping stopped after {minutesToScrape} minutes.")
 
     print("Uploading scraped data to MongoDB...")
-    # use uploadCSV() to upload
+    for file in os.listdir("parsed_tweets"):
+        if file.endswith(".csv"):
+            file_path = os.path.join("parsed_tweets", file)
+            # use uploadCSV() to upload
+            listOfTweets: List[Tweet] = uploadCSV(file_path)
+            for tweet in listOfTweets:
+                tweet_result = tweets_collection.insert_one(tweet)
+                print("\nTweet Test:")
+                print("Inserted tweet with id:", tweet_result.inserted_id)
     print("Upload complete.")
+    
+    
 
     
 if __name__ == "__main__":
@@ -166,7 +192,18 @@ if __name__ == "__main__":
 
     # scrapeMain(6, 60, "parametersFolder", cookiesList)
     
-    print(uploadCSV("parsed_tweets/output_1.csv"))
+    # print(uploadCSV("parsed_tweets/output_1.csv"))
+    
+    # tweets_collection = db.tweets
+    # for file in os.listdir("parsed_tweets"):
+    #     if file.endswith(".csv"):
+    #         file_path = os.path.join("parsed_tweets", file)
+    #         listOfTweets: List[Tweet] = uploadCSV(file_path)
+    #         for tweet in listOfTweets:
+    #             tweet_result = tweets_collection.insert_one(tweet)
+    #             print("\nTweet Test:")
+    #             print("Inserted tweet with id:", tweet_result.inserted_id)
+    # print("Upload complete.")
 
 # print(f"{getTrendingKeywords(CURRENTCOOKIE)}")
 
